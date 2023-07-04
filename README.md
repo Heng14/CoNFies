@@ -47,7 +47,7 @@ After training the model, you can do rendering using:
 
 
 ## Note
-It is not the final version code and we will keep updating!
+Please modify the 'attribute and mask' part in configs/baselines/ours.gin and line #366 mask_select in conerf/training.py according to the attribute number and mask number in your dataset.
 
 ## Citing
 If you find our work useful, please consider citing:
