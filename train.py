@@ -163,7 +163,7 @@ def main(argv):
     # Load configurations.
     exp_config = configs.ExperimentConfig()
     train_config = configs.TrainConfig()
-    dummy_model = models.NerfModel({}, 0, 0, 0)
+    dummy_model = models.NerfModel({}, 0, 0, 0, {})
 
     # Get directory information.
     exp_dir = gpath.GPath(FLAGS.base_folder)
@@ -237,6 +237,7 @@ def main(argv):
         near=datasource.near,
         far=datasource.far,
         num_attributes=datasource.num_attributes,
+        attr_num_map=train_config.attr_num_map,
     )
 
     # Create Jax iterator.

@@ -138,6 +138,7 @@ def main(argv):
         near=datasource.near,
         far=datasource.far,
         num_attributes=datasource.num_attributes,
+        attr_num_map=train_config.attr_num_map,
     )
     optimizer_def = optim.Adam(learning_rate_sched(0))
     optimizer = optimizer_def.create(params)
@@ -203,6 +204,7 @@ def main(argv):
 
     num_attributes = datasource.num_attributes
     value_len = datasource.value_len
+    attr_num_map = train_config.attr_num_map
 
     # attribute_values = jnp.array(
     #     [-1.0, -0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4, 0.6, 0.8, 1.0]
@@ -325,7 +327,7 @@ def main(argv):
                     mask = np.concatenate(
                         np.split(
                             attribute,
-                            indices_or_sections=3, #num_attributes -1, # sum to 1 hyper by heng
+                            indices_or_sections=len(attr_num_map), #num_attributes -1, # sum to 1 hyper by heng
                             axis=-1,
                         ),
                         axis=1,

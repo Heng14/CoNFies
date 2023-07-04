@@ -40,6 +40,10 @@ NERF_EASE_ALPHA_SCHEDULE = {
 }
 
 
+# attribute and mask
+NerfModel.attr_len = 1
+TrainConfig.attr_num_map = {0:1, 1:1, 2:1} # {0:3, 1:5, 2:9} for 17 attr # attr and mask correspondence, e.g. 17 attributes and 3 masks, 1st mask corresponds to first 3 attributes, 2nd mask-> middle 5 attr, 3rd -> last 9 attr
+
 # Hyper config.
 hyper_point_min_deg = 0
 hyper_point_max_deg = 1

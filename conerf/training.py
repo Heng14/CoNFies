@@ -14,7 +14,8 @@
 
 """Library to training NeRFs."""
 import functools
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Optional, List
+import immutabledict
 
 import flax
 import jax
@@ -201,6 +202,7 @@ def compute_background_loss(
         "use_depth_loss",
         "use_focal_loss",
         "num_attributes",
+        "attr_num_map",
     ),
 )
 def train_step(
@@ -361,21 +363,29 @@ def train_step(
                     raise NotImplementedError()
                 else:
 
+                    mask_select = [0,1,2] # [0,3,8] for 17 attr #by heng, select correct mask gt
+
+                    # index_list = []
+                    # attr_num_i_start = 0
+                    # for attr_num_idx, attr_num_i in attr_num_map.items():
+                    #     index_list.append(attr_num_i_start)
+                    #     attr_num_i_start += attr_num_i
+
                     # attributes_given_mask = are_attributes_given[...,::2] # hard coded for now by heng, need change between 1or2 mask
 
-                    attributes_given_mask = are_attributes_given[...,[0,3,8]] #sum to 1 hyper by heng
+                    attributes_given_mask = are_attributes_given[...,mask_select] #by heng, select correct mask gt
 
                     attribute_pred = jnp.clip(
                         nn.sigmoid(
                             model_out["attribute_rgb"][
-                                ..., :3 # sum to 1 hyper by heng
+                                ..., :len(mask_select)   # by heng
                                 ] 
                         ),
                         1e-4,
                         1 - 1e-4,
                     )
                     attribute_true = batch["attribute_rgb"][
-                        ..., [0,3,8] # sum to 1 hyper by heng
+                        ..., mask_select #by heng, select correct mask gt
                     ]
 
                     if use_focal_loss:

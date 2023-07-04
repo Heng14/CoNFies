@@ -177,6 +177,8 @@ class TrainConfig:
     curvature_loss_spacing: float = 0
     curvature_loss_weight_schedule: Optional[Any] = None
 
+    attr_num_map: Optional[Any] = None
+
 
 @gin.configurable()
 @dataclasses.dataclass

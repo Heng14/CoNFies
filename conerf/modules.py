@@ -228,6 +228,8 @@ class MaskNerfMLP(nn.Module): # by heng decouple mask with attribute (good versi
     norm: Optional[Any] = None
     skips: Tuple[int] = (4,)
 
+    attr_num_map: Optional[Any] = None
+
     @nn.compact
     def __call__(self, x, attributes_condition):
         """Multi-layer perception for nerf.
@@ -369,7 +371,7 @@ class MaskNerfMLP(nn.Module): # by heng decouple mask with attribute (good versi
         num_samples = x.shape[1]
         x = x.reshape([-1, feature_dim])
 
-        mask_class = 3 #1 #2 #3 mask num (no count bg) by heng,  need change between 1or2 mask, # sum to 1 hyper by heng
+        mask_class = len(self.attr_num_map) #3 #1 #2 #3 mask num (no count bg) by heng,  need change between 1or2 mask, # sum to 1 hyper by heng
         outputs = []
 
 
@@ -380,16 +382,23 @@ class MaskNerfMLP(nn.Module): # by heng decouple mask with attribute (good versi
         #     outputs.append(attributes_i)
 
 
+        attr_num_i_start = 0
+        for attr_num_idx, attr_num_i in self.attr_num_map.items():
+            xi = jnp.concatenate((x[...,:51], x[...,51+16*attr_num_i_start:51+16*(attr_num_i_start+attr_num_i)], x[...,-16:]), axis=-1) # sum to 1 hyper by heng
+            attr_num_i_start += attr_num_i            
+            attributes_i = process_one(xi, attributes_condition)
+            outputs.append(attributes_i)
+
         
-        xi = jnp.concatenate((x[...,:51], x[...,51:51+16*3], x[...,-16:]), axis=-1) # sum to 1 hyper by heng
-        attributes_i = process_one(xi, attributes_condition)
-        outputs.append(attributes_i)
-        xi = jnp.concatenate((x[...,:51], x[...,51+16*3:51+16*8], x[...,-16:]), axis=-1) # sum to 1 hyper by heng
-        attributes_i = process_one(xi, attributes_condition)
-        outputs.append(attributes_i)
-        xi = jnp.concatenate((x[...,:51], x[...,51+16*8:51+16*17], x[...,-16:]), axis=-1) # sum to 1 hyper by heng
-        attributes_i = process_one(xi, attributes_condition)
-        outputs.append(attributes_i)
+        # xi = jnp.concatenate((x[...,:51], x[...,51:51+16*3], x[...,-16:]), axis=-1) # sum to 1 hyper by heng
+        # attributes_i = process_one(xi, attributes_condition)
+        # outputs.append(attributes_i)
+        # xi = jnp.concatenate((x[...,:51], x[...,51+16*3:51+16*8], x[...,-16:]), axis=-1) # sum to 1 hyper by heng
+        # attributes_i = process_one(xi, attributes_condition)
+        # outputs.append(attributes_i)
+        # xi = jnp.concatenate((x[...,:51], x[...,51+16*8:51+16*17], x[...,-16:]), axis=-1) # sum to 1 hyper by heng
+        # attributes_i = process_one(xi, attributes_condition)
+        # outputs.append(attributes_i)
 
         attributes =  jnp.concatenate(outputs, axis=-1)
         return {
@@ -508,7 +517,7 @@ class UncertMLP(nn.Module): # by heng decouple mask with attribute (good version
         num_samples = x.shape[1]
         x = x.reshape([-1, feature_dim])
 
-        mask_class = 17 #1 #2 #3 uncertainty num (equals to label) by heng,  need change between 1or2 mask, # sum to 1 hyper by heng
+        mask_class = self.attribute_channels #17 #1 #2 #3 uncertainty num (equals to label) by heng,  need change between 1or2 mask, # sum to 1 hyper by heng
         outputs = []
 
         for i in range(mask_class):

@@ -114,6 +114,8 @@ class NerfModel(nn.Module):
     far: float = gin.REQUIRED
     num_attributes: int = gin.REQUIRED
 
+    attr_num_map: Mapping[int, int] = gin.REQUIRED
+
     # NeRF architecture.
     use_viewdirs: bool = True
     noise_std: Optional[float] = None
@@ -156,7 +158,7 @@ class NerfModel(nn.Module):
     norm_type: Optional[str] = None
     sigma_activation: types.Activation = nn.softplus
 
-
+    # attribute and mask
     attr_len: int = 1 #2 #3 # hard code by heng, need change between 1or2 mask
 
     # NeRF metadata configs.
@@ -365,6 +367,7 @@ class NerfModel(nn.Module):
                 norm=norm_layer,
                 skips=self.nerf_attributes_skips,
                 attribute_channels=self.num_attributes,
+                attr_num_map=self.attr_num_map,
             )
 
             nerf_mlps["coarse_uncert"] = modules.UncertMLP(
@@ -400,6 +403,7 @@ class NerfModel(nn.Module):
                     norm=norm_layer,
                     skips=self.nerf_attributes_skips,
                     attribute_channels=self.num_attributes,
+                    attr_num_map=self.attr_num_map,
                 )
 
                 nerf_mlps["fine_uncert"] = modules.UncertMLP(
@@ -551,7 +555,7 @@ class NerfModel(nn.Module):
         #     alpha=extra_params["hyper_alpha"],
         # )
 
-        hyper_layers = 18 #3 # mask classes + 1 background hard code by heng, need change between 1or2 mask
+        hyper_layers = self.num_attributes + 1 #18 #3 # mask classes + 1 background hard code by heng, need change between 1or2 mask
         outputs = []
         for i in range(hyper_layers):
             hyper_feat_i = model_utils.posenc(
@@ -697,17 +701,26 @@ class NerfModel(nn.Module):
                             attribute_mask[..., jnp.newaxis]
                         )
 
+                        hyper_points_list = []
+                        attr_num_i_start = 0
+                        for attr_num_idx, attr_num_i in self.attr_num_map.items():
+                            hyper_points_list.append(hyper_points[..., attr_num_i_start:attr_num_i_start+attr_num_i, :] * main_mask[:,:,attr_num_idx:attr_num_idx+1,:])
+                            attr_num_i_start += attr_num_i
+                        hyper_points_list.append(hyper_points[..., -1:, :] * rest_mask)
 
-                        hyper_points = jnp.concatenate(
-                            (
-                                hyper_points[..., :3, :] * main_mask[:,:,:1,:], # sum to 1 hyper by heng
-                                hyper_points[..., 3:8, :] * main_mask[:,:,1:2,:], # sum to 1 hyper by heng
-                                hyper_points[..., 8:17, :] * main_mask[:,:,2:,:], # sum to 1 hyper by heng
-                                # hyper_points[..., [0], :] * main_mask[...,[0],:] + hyper_points[..., [1], :] * main_mask[...,[1], :], # sum to 1 mask by heng
-                                hyper_points[..., -1:, :] * rest_mask,
-                            ),
-                            axis=-2,
-                        )
+                        hyper_points = jnp.concatenate(hyper_points_list, axis=-2,)
+
+
+                        # hyper_points = jnp.concatenate(
+                        #     (
+                        #         hyper_points[..., :3, :] * main_mask[:,:,:1,:], # sum to 1 hyper by heng
+                        #         hyper_points[..., 3:8, :] * main_mask[:,:,1:2,:], # sum to 1 hyper by heng
+                        #         hyper_points[..., 8:17, :] * main_mask[:,:,2:,:], # sum to 1 hyper by heng
+                        #         # hyper_points[..., [0], :] * main_mask[...,[0],:] + hyper_points[..., [1], :] * main_mask[...,[1], :], # sum to 1 mask by heng
+                        #         hyper_points[..., -1:, :] * rest_mask,
+                        #     ),
+                        #     axis=-2,
+                        # )
 
                         hyper_points = hyper_points.reshape(orig_shape) #bk
                         # hyper_points = hyper_points.reshape([orig_shape[0],orig_shape[1], -1]) # sum to 1 mask by heng
@@ -1309,6 +1322,7 @@ def construct_nerf(
     near: float,
     far: float,
     num_attributes: int,
+    attr_num_map: Dict[int, int],
 ):
     """Neural Randiance Field.
 
@@ -1330,6 +1344,7 @@ def construct_nerf(
         near=near,
         far=far,
         num_attributes=num_attributes,
+        attr_num_map=immutabledict.immutabledict(attr_num_map),
     )
 
     init_rays_dict = {
